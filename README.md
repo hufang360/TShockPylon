@@ -1,4 +1,6 @@
-指令晶塔
+# 指令晶塔
+
+
 当因 NPC不在、boss战中、事件入侵中，无法使用使用晶塔时，可以使用指令晶塔进行传送。
 
 ```
@@ -15,7 +17,9 @@ forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, universal
 <br/>
 
 ## 传送要求
+
 1、要传送的晶塔必须存在；
+
 2、玩家附近需要有任意一种晶塔；
 
 
