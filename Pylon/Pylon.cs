@@ -24,14 +24,14 @@ namespace Pylon
 
         public Pylon(Main game) : base(game)
         {
-            Commands.ChatCommands.Add(new Command("pylon", PYCommand, "pylon", "py", "晶塔") { HelpText = "指令晶塔" });
+            Commands.ChatCommands.Add(new Command("pylon", Manage, "pylon", "py", "晶塔") { HelpText = "指令晶塔" });
         }
 
         public override void Initialize()
         {
         }
 
-        void PYCommand(CommandArgs args)
+        void Manage(CommandArgs args)
         {
             TSPlayer op = args.Player;
 
@@ -148,6 +148,11 @@ namespace Pylon
 
         void Place(CommandArgs args)
         {
+            if (!args.Player.HasPermission("pylon.place"))
+            {
+                args.Player.SendErrorMessage("你没有放置晶塔的权限！");
+                return;
+            }
             args.Parameters.RemoveAt(0);
             if (args.Parameters.Count == 0)
             {
