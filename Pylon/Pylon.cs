@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Terraria;
+using Terraria.DataStructures;
 using Terraria.GameContent;
+using Terraria.GameContent.Tile_Entities;
 using Terraria.ID;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -51,33 +53,41 @@ namespace Pylon
             }
 
             string kw = args.Parameters[0].ToLowerInvariant().Replace("晶塔", "");
-            TeleportPylonType pyType;
+            int pyType;
             switch (kw)
             {
-                case "1": case "森林": case "f": case "forest": pyType = TeleportPylonType.SurfacePurity; break;
-                case "2": case "雪原": case "s": case "snow": pyType = TeleportPylonType.Snow; break;
-                case "3": case "沙漠": case "d": case "desert": pyType = TeleportPylonType.Desert; break;
-                case "4": case "洞穴": case "c": case "cavern": pyType = TeleportPylonType.Underground; break;
-                case "5": case "海洋": case "o": case "ocean": pyType = TeleportPylonType.Beach; break;
-                case "6": case "丛林": case "j": case "jungle": pyType = TeleportPylonType.Jungle; break;
-                case "7": case "神圣": case "h": case "hallow": pyType = TeleportPylonType.Hallow; break;
-                case "8": case "蘑菇": case "m": case "mushroom": pyType = TeleportPylonType.GlowingMushroom; break;
-                case "9": case "万能": case "u": case "universal": pyType = TeleportPylonType.Victory; break;
+                case "place":
+                case "p":
+                    Place(args);
+                    return;
+
+                case "fix":
+                    FixPylonError(args);
+                    return;
 
                 case "help": Help(); return;
-                default: op.SendErrorMessage("无效的晶塔名称！"); Help(); return;
+
+                default:
+                    pyType = GetPylonType(kw);
+                    if (pyType == -1)
+                    {
+                        op.SendErrorMessage("无效的晶塔名称！");
+                        Help();
+                        return;
+                    }
+                    break;
             }
 
-            Dictionary<TeleportPylonType, string> map = new Dictionary<TeleportPylonType, string>() {
-                {TeleportPylonType.SurfacePurity, "[i:4876]森林" },
-                {TeleportPylonType.Jungle, "[i:4875]丛林" },
-                {TeleportPylonType.Hallow, "[i:4916]神圣" },
-                {TeleportPylonType.Underground, "[i:4917]洞穴" },
-                {TeleportPylonType.Beach, "[i:4918]海洋" },
-                {TeleportPylonType.Desert, "[i:4919]沙漠" },
-                {TeleportPylonType.Snow, "[i:4920]雪原" },
-                {TeleportPylonType.GlowingMushroom, "[i:4921]蘑菇" },
-                {TeleportPylonType.Victory, "[i:4951]万能" },
+            List<string> map = new() {
+                "[i:4876]森林",
+                "[i:4875]丛林",
+                "[i:4916]神圣",
+                "[i:4917]洞穴",
+                "[i:4918]海洋",
+                "[i:4919]沙漠",
+                "[i:4920]雪原",
+                "[i:4921]蘑菇",
+                "[i:4951]万能",
             };
 
             if (!NearHasPylon(op))
@@ -90,7 +100,7 @@ namespace Pylon
             for (int i = 0; i < pylons.Count; i++)
             {
                 TeleportPylonInfo info = pylons[i];
-                if (info.TypeOfPylon == pyType)
+                if ((int)info.TypeOfPylon == pyType)
                 {
                     op.Teleport(info.PositionInTiles.X * 16, info.PositionInTiles.Y * 16);
                     op.SendInfoMessage($"已将你传送至 {map[pyType]}晶塔");
@@ -98,6 +108,23 @@ namespace Pylon
                 }
             }
             op.SendErrorMessage($"未找到 {map[pyType]}晶塔");
+        }
+
+        int GetPylonType(string text)
+        {
+            switch (text)
+            {
+                case "1": case "森林": case "f": case "forest": return (int)TeleportPylonType.SurfacePurity;
+                case "2": case "雪原": case "s": case "snow": return (int)TeleportPylonType.Snow;
+                case "3": case "沙漠": case "d": case "desert": return (int)TeleportPylonType.Desert;
+                case "4": case "洞穴": case "c": case "cavern": return (int)TeleportPylonType.Underground;
+                case "5": case "海洋": case "o": case "ocean": return (int)TeleportPylonType.Beach;
+                case "6": case "丛林": case "j": case "jungle": return (int)TeleportPylonType.Jungle;
+                case "7": case "神圣": case "h": case "hallow": return (int)TeleportPylonType.Hallow;
+                case "8": case "蘑菇": case "m": case "mushroom": return (int)TeleportPylonType.GlowingMushroom;
+                case "9": case "万能": case "u": case "universal": return (int)TeleportPylonType.Victory;
+                default: return -1;
+            }
         }
 
         /// <summary>
@@ -117,6 +144,99 @@ namespace Pylon
                 }
             }
             return false;
+        }
+
+        void Place(CommandArgs args)
+        {
+            args.Parameters.RemoveAt(0);
+            if (args.Parameters.Count == 0)
+            {
+                args.Player.SendErrorMessage("请输入要放置的晶塔名称，例如：/py place 丛林晶塔，名称还可用1~9代替。");
+                return;
+            }
+
+            int pyType = GetPylonType(args.Parameters[0].ToLowerInvariant());
+            if (pyType == -1)
+            {
+                args.Player.SendErrorMessage("无效的晶塔名称！");
+                return;
+            }
+
+            var curX = args.Player.TileX;
+            var curY = args.Player.TileY + 3;
+            var rect = new Rectangle(curX - 1, curY - 4, 3, 4);
+            var emptyCount = 0;
+            var underCount = 0;
+            for (int rx = rect.Left; rx < rect.Right; rx++)
+            {
+                for (int ry = rect.Top; ry < rect.Bottom; ry++)
+                {
+                    ITile tile = Main.tile[rx, ry];
+                    if (!tile.active())
+                    {
+                        emptyCount++;
+                    }
+
+                    // 脚下一格
+                    if (ry == rect.Bottom - 1)
+                    {
+                        tile = Main.tile[rx, ry + 1];
+                        if (tile.active())
+                        {
+                            underCount++;
+                        }
+                    }
+                }
+            }
+            if (emptyCount == 12 && underCount == 3)
+            {
+                var cx = args.Player.TileX;
+                var cy = args.Player.TileY + 2;
+                WorldGen.Place3x4(cx, cy, 597, pyType);
+                NetMessage.SendTileSquare(-1, cx, cy, 4);
+                var index = TETeleportationPylon.Place(cx, cy);
+                if (index != -1)
+                {
+                    NetMessage.SendData(86, -1, -1, null, index, cx, cy);
+                }
+                else
+                {
+                    args.Player.SendErrorMessage("放置晶塔失败！");
+                }
+            }
+            else
+            {
+                args.Player.SendErrorMessage("你附近3x4的区域有物体，请前往空地！");
+            }
+            Netplay.ResetSections();
+        }
+
+
+        void FixPylonError(CommandArgs args)
+        {
+            int count = 0;
+            foreach (TileEntity value in TileEntity.ByPosition.Values)
+            {
+                TETeleportationPylon tETeleportationPylon = value as TETeleportationPylon;
+                if (tETeleportationPylon != null)
+                {
+                    var rx = tETeleportationPylon.Position.X;
+                    var ry = tETeleportationPylon.Position.Y;
+                    ITile tile = Main.tile[rx, ry];
+                    if (!tile.active() || tile.type != 597)
+                    {
+                        TileEntity.ByPosition.Remove(tETeleportationPylon.Position);
+                        TileEntity.ByID.Remove(tETeleportationPylon.ID);
+                        NetMessage.SendData(86, -1, -1, null, tETeleportationPylon.ID, rx, ry);
+                        count++;
+                    }
+                }
+            }
+            if (count > 0)
+            {
+                Main.PylonSystem.RequestImmediateUpdate();
+            }
+            args.Player.SendSuccessMessage($"已清除{count}个错误的晶塔信息");
         }
 
         protected override void Dispose(bool disposing)
