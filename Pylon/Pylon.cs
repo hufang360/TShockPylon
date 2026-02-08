@@ -39,10 +39,10 @@ namespace Pylon
             {
                 op.SendInfoMessage("/py <晶塔名称>, 将你传送到指定晶塔\n" +
                     "有效的晶塔名称：\n" +
-                    "1, 2, 3, 4, 5, 6, 7, 8, 9\n" +
-                    "森林, 雪原, 沙漠, 洞穴, 海洋, 丛林, 神圣, 蘑菇, 万能\n" +
-                    "f, s, d, c, o, j, h, m, u\n" +
-                    "forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, universal"
+                    "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11\n" +
+                    "森林, 雪原, 沙漠, 洞穴, 海洋, 丛林, 神圣, 蘑菇, 地狱, 以太, 万能\n" +
+                    "f, s, d, c, o, j, h, m, u, a, uni\n" +
+                    "forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, underworld, aether, universal"
                     );
             }
 
@@ -88,6 +88,8 @@ namespace Pylon
                 "[i:4920]雪原",
                 "[i:4921]蘑菇",
                 "[i:4951]万能",
+                "[i:5652]地狱",
+                "[i:5653]以太",
             };
 
             if (!NearHasPylon(op))
@@ -122,7 +124,9 @@ namespace Pylon
                 case "6": case "丛林": case "j": case "jungle": return (int)TeleportPylonType.Jungle;
                 case "7": case "神圣": case "h": case "hallow": return (int)TeleportPylonType.Hallow;
                 case "8": case "蘑菇": case "m": case "mushroom": return (int)TeleportPylonType.GlowingMushroom;
-                case "9": case "万能": case "u": case "universal": return (int)TeleportPylonType.Victory;
+                case "9": case "地狱": case "u": case "underworld": return (int)TeleportPylonType.Underworld;
+                case "10": case "以太": case "a": case "aether": return (int)TeleportPylonType.Shimmer;
+                case "11": case "万能": case "uni": case "universal": return (int)TeleportPylonType.Victory;
                 default: return -1;
             }
         }
