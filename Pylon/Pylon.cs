@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Terraria;
 using Terraria.DataStructures;
@@ -56,6 +57,7 @@ namespace Pylon
             int pyType;
             switch (kw)
             {
+                // 放置晶塔
                 case "place":
                 case "p":
                     Place(args);
@@ -66,6 +68,12 @@ namespace Pylon
                     return;
 
                 case "help": Help(); return;
+
+                // 找箱子
+                case "find":
+                    args.Parameters.RemoveAt(0);
+                    ShowMe(args);
+                    return;
 
                 default:
                     pyType = GetPylonType(kw);
@@ -78,7 +86,7 @@ namespace Pylon
                     break;
             }
 
-            List<string> map = new() {
+            List<string> map = [
                 "[i:4876]森林",
                 "[i:4875]丛林",
                 "[i:4916]神圣",
@@ -90,7 +98,7 @@ namespace Pylon
                 "[i:4951]万能",
                 "[i:5652]地狱",
                 "[i:5653]以太",
-            };
+            ];
 
             if (!NearHasPylon(op))
             {
@@ -112,31 +120,31 @@ namespace Pylon
             op.SendErrorMessage($"未找到 {map[pyType]}晶塔");
         }
 
-        int GetPylonType(string text)
+        static int GetPylonType(string text)
         {
-            switch (text)
+            return text switch
             {
-                case "1": case "森林": case "f": case "forest": return (int)TeleportPylonType.SurfacePurity;
-                case "2": case "雪原": case "s": case "snow": return (int)TeleportPylonType.Snow;
-                case "3": case "沙漠": case "d": case "desert": return (int)TeleportPylonType.Desert;
-                case "4": case "洞穴": case "c": case "cavern": return (int)TeleportPylonType.Underground;
-                case "5": case "海洋": case "o": case "ocean": return (int)TeleportPylonType.Beach;
-                case "6": case "丛林": case "j": case "jungle": return (int)TeleportPylonType.Jungle;
-                case "7": case "神圣": case "h": case "hallow": return (int)TeleportPylonType.Hallow;
-                case "8": case "蘑菇": case "m": case "mushroom": return (int)TeleportPylonType.GlowingMushroom;
-                case "9": case "地狱": case "u": case "underworld": return (int)TeleportPylonType.Underworld;
-                case "10": case "以太": case "a": case "aether": return (int)TeleportPylonType.Shimmer;
-                case "11": case "万能": case "uni": case "universal": return (int)TeleportPylonType.Victory;
-                default: return -1;
-            }
+                "1" or "森林" or "f" or "forest" => (int)TeleportPylonType.SurfacePurity,
+                "2" or "雪原" or "s" or "snow" => (int)TeleportPylonType.Snow,
+                "3" or "沙漠" or "d" or "desert" => (int)TeleportPylonType.Desert,
+                "4" or "洞穴" or "c" or "cavern" => (int)TeleportPylonType.Underground,
+                "5" or "海洋" or "o" or "ocean" => (int)TeleportPylonType.Beach,
+                "6" or "丛林" or "j" or "jungle" => (int)TeleportPylonType.Jungle,
+                "7" or "神圣" or "h" or "hallow" => (int)TeleportPylonType.Hallow,
+                "8" or "蘑菇" or "m" or "mushroom" => (int)TeleportPylonType.GlowingMushroom,
+                "9" or "地狱" or "u" or "underworld" => (int)TeleportPylonType.Underworld,
+                "10" or "以太" or "a" or "aether" => (int)TeleportPylonType.Shimmer,
+                "11" or "万能" or "uni" or "universal" => (int)TeleportPylonType.Victory,
+                _ => -1,
+            };
         }
 
         /// <summary>
         /// 附近是否有晶塔
         /// </summary>
-        bool NearHasPylon(TSPlayer op)
+        static bool NearHasPylon(TSPlayer op)
         {
-            Rectangle rect = utils.GetScreen(op);
+            Rectangle rect = GetScreen(op);
             for (int x = rect.X; x < rect.Right; x++)
             {
                 for (int y = rect.Y; y < rect.Bottom; y++)
@@ -150,7 +158,8 @@ namespace Pylon
             return false;
         }
 
-        void Place(CommandArgs args)
+        #region 放置晶塔
+        static void Place(CommandArgs args)
         {
             if (!args.Player.HasPermission("pylon.place"))
             {
@@ -219,24 +228,24 @@ namespace Pylon
             }
             Netplay.ResetSections();
         }
+        #endregion
 
-
-        void FixPylonError(CommandArgs args)
+        #region 修复晶塔错误
+        static void FixPylonError(CommandArgs args)
         {
             int count = 0;
             foreach (TileEntity value in TileEntity.ByPosition.Values)
             {
-                TETeleportationPylon tETeleportationPylon = value as TETeleportationPylon;
-                if (tETeleportationPylon != null)
+                if (value is TETeleportationPylon obj)
                 {
-                    var rx = tETeleportationPylon.Position.X;
-                    var ry = tETeleportationPylon.Position.Y;
+                    var rx = obj.Position.X;
+                    var ry = obj.Position.Y;
                     ITile tile = Main.tile[rx, ry];
                     if (!tile.active() || tile.type != 597)
                     {
-                        TileEntity.ByPosition.Remove(tETeleportationPylon.Position);
-                        TileEntity.ByID.Remove(tETeleportationPylon.ID);
-                        NetMessage.SendData(86, -1, -1, null, tETeleportationPylon.ID, rx, ry);
+                        TileEntity.ByPosition.Remove(obj.Position);
+                        TileEntity.ByID.Remove(obj.ID);
+                        NetMessage.SendData(86, -1, -1, null, obj.ID, rx, ry);
                         count++;
                     }
                 }
@@ -247,6 +256,126 @@ namespace Pylon
             }
             args.Player.SendSuccessMessage($"已清除{count}个错误的晶塔信息");
         }
+        #endregion
+
+        #region 找箱子
+        // 物品名
+        private static void ShowMe(CommandArgs args)
+        {
+            TSPlayer op = args.Player;
+            if (!NearHasPylon(op))
+            {
+                op.SendErrorMessage("附近需要有任意一种晶塔，才能进行查找！");
+                return;
+            }
+
+            if (args.Parameters.Count == 0)
+            {
+                op.SendInfoMessage("语法不正确，输入 /py find <物品名称/id> [箱子编号] 查找箱子里的物品！");
+                return;
+            }
+
+            switch (args.Parameters[0].ToLowerInvariant())
+            {
+                default:
+                    int selectNum = 0;
+                    if (args.Parameters.Count >= 2) _ = int.TryParse(args.Parameters[1], out selectNum);
+                    FindNearChest(op, args.Parameters[0], selectNum);
+                    return;
+            }
+        }
+
+        private static void FindNearChest(TSPlayer op, string itemNameOrID, int selectNum = 0)
+        {
+            Item item;
+            if (int.TryParse(itemNameOrID, out int id))
+            {
+                if (id == 0)
+                {
+                    op.SendInfoMessage("物品名输入有误！");
+                    return;
+                }
+                item = new Item();
+                item.netDefaults(id);
+            }
+            else
+            {
+                List<Item> found = TShock.Utils.GetItemByIdOrName(itemNameOrID);
+                if (found.Count == 0)
+                {
+                    op.SendInfoMessage("物品名输入有误！");
+                    return;
+                }
+                else if (found.Count > 1)
+                {
+                    op.SendMultipleMatchError(found.Select(i => $"{i.Name}({i.type})"));
+                    return;
+                }
+                item = found[0];
+            }
+
+            // 所有晶塔附近一屏区域
+            List<Rectangle> areas = [];
+            foreach (TileEntity value in TileEntity.ByPosition.Values)
+            {
+                if (value is TETeleportationPylon obj)
+                {
+                    var rx = obj.Position.X;
+                    var ry = obj.Position.Y;
+                    Rectangle area = new(rx - 61, ry - 34 + 3, 122, 68);
+                    areas.Add(area);
+                }
+            }
+
+            int total = 0;
+            List<Chest> chests = [];
+            foreach (Chest ch in Main.chest.Where(ch => ch != null))
+            {
+                if (!InMultiArea(areas, ch.x, ch.y))
+                    continue;
+
+                int stack = 0;
+                foreach (Item item2 in ch.item.Where(item2 => item2 != null && item2.active && item2.type == item.type))
+                {
+                    stack += item2.stack;
+                }
+                if (stack == 0) continue;
+                chests.Add(ch);
+                total += stack;
+            }
+            if (total == 0)
+            {
+                op.SendInfoMessage($"所有晶塔附近的箱子里都没有 [i:{item.type}]{item.Name}");
+                return;
+            }
+
+            if (selectNum <= 0)
+                selectNum = 1;
+            else if (selectNum > chests.Count)
+                selectNum = chests.Count;
+
+            Chest ch2 = chests[selectNum - 1];
+            if (op.RealPlayer) op.Teleport(ch2.x * 16, (ch2.y - 2) * 16);
+            op.SendInfoMessage($"在所有晶塔附近找到 {chests.Count}个箱子 存放了 [i:{item.type}]{item.Name}，共计{total}件");
+        }
+
+        private static bool InMultiArea(List<Rectangle> rects, int x, int y)
+            => rects.Any(rect => InArea(rect, x, y));
+
+        private static bool InArea(Rectangle rect, int x, int y)
+        {
+            return x >= rect.X && x <= rect.X + rect.Width && y >= rect.Y && y <= rect.Y + rect.Height;
+        }
+        #endregion
+
+        #region 通用方法
+        /// <summary>
+        /// 日志
+        /// </summary>
+        public static void Log(string msg) { TShock.Log.ConsoleInfo($"[pylon]：{msg}"); }
+        public static Rectangle GetScreen(TSPlayer op) { return GetScreen(op.TileX, op.TileY); }
+        public static Rectangle GetScreen(int playerX, int playerY) { return new Rectangle(playerX - 61, playerY - 34 + 3, 122, 68); }
+        #endregion
 
         protected override void Dispose(bool disposing)
         {
@@ -256,15 +385,5 @@ namespace Pylon
             base.Dispose(disposing);
         }
 
-    }
-
-    public class utils
-    {
-        /// <summary>
-        /// 日志
-        /// </summary>
-        public static void Log(string msg) { TShock.Log.ConsoleInfo($"[pylon]：{msg}"); }
-        public static Rectangle GetScreen(TSPlayer op) { return GetScreen(op.TileX, op.TileY); }
-        public static Rectangle GetScreen(int playerX, int playerY) { return new Rectangle(playerX - 61, playerY - 34 + 3, 122, 68); }
     }
 }
