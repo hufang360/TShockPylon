@@ -7,12 +7,13 @@
 
 ## 基础使用
 ```
-/pylon <晶塔名称>, 将你传送至对应晶塔
-/pylon 可以简写成 /py, 或者写成 /晶塔
+/py <晶塔名称>, 将你传送至对应晶塔
+/py 可以简写成 /pylon, 或者写成 /晶塔
 
-/py place <晶塔名称>, 放置晶塔（高级权限）
-
+/py place <晶塔名称>, 在脚下放置晶塔（需要 hf.pylon.place）
 /py find <物品名称>, 在所有晶塔附近查找箱子里的物品
+/py fix, 清除错误的晶塔信息（需要 hf.pylon.admin）
+/py help, 查看帮助（只显示你有权限使用的指令）
 ```
 
 **有效的晶塔名称：**
@@ -34,13 +35,15 @@ forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, underworld, aethe
 
 授权示意：
 ```bash
-/group addperm default pylon
+/group addperm default hf.pylon.use
+/group addperm admin hf.pylon.*
 ```
 
 | 权限 | 说明 |
 | --- | --- |
-| pylon | 主权限 |
-| pylon.place | 高级权限，允许使用 `/py place` 指令 |
+| hf.pylon.use | 主权限，允许传送和 `/py find` |
+| hf.pylon.place | 允许使用 `/py place` 放置晶塔 |
+| hf.pylon.admin | 允许使用 `/py fix` 修复晶塔信息 |
 
 
 <br/>

@@ -23,9 +23,28 @@ namespace Pylon
         public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
 
 
+        const string UsePermission = "hf.pylon.use";
+        const string PlacePermission = "hf.pylon.place";
+        const string AdminPermission = "hf.pylon.admin";
+
+        // 索引与 TeleportPylonType 对应
+        static readonly string[] PylonNames = [
+            "[i:4876]森林",
+            "[i:4875]丛林",
+            "[i:4916]神圣",
+            "[i:4917]洞穴",
+            "[i:4918]海洋",
+            "[i:4919]沙漠",
+            "[i:4920]雪原",
+            "[i:4921]蘑菇",
+            "[i:4951]万能",
+            "[i:5652]地狱",
+            "[i:5653]以太",
+        ];
+
         public Pylon(Main game) : base(game)
         {
-            Commands.ChatCommands.Add(new Command("pylon", Manage, "pylon", "py", "晶塔") { HelpText = "指令晶塔" });
+            Commands.ChatCommands.Add(new Command(UsePermission, Manage, "pylon", "py", "晶塔") { HelpText = "指令晶塔，输入 /py help 查看用法" });
         }
 
         public override void Initialize()
@@ -36,20 +55,9 @@ namespace Pylon
         {
             TSPlayer op = args.Player;
 
-            void Help()
-            {
-                op.SendInfoMessage("/py <晶塔名称>, 将你传送到指定晶塔\n" +
-                    "有效的晶塔名称：\n" +
-                    "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11\n" +
-                    "森林, 雪原, 沙漠, 洞穴, 海洋, 丛林, 神圣, 蘑菇, 地狱, 以太, 万能\n" +
-                    "f, s, d, c, o, j, h, m, u, a, uni\n" +
-                    "forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, underworld, aether, universal"
-                    );
-            }
-
             if (args.Parameters.Count == 0)
             {
-                Help();
+                Help(op);
                 return;
             }
 
@@ -67,7 +75,9 @@ namespace Pylon
                     FixPylonError(args);
                     return;
 
-                case "help": Help(); return;
+                case "help":
+                    Help(op);
+                    return;
 
                 // 找箱子
                 case "find":
@@ -80,29 +90,15 @@ namespace Pylon
                     if (pyType == -1)
                     {
                         op.SendErrorMessage("无效的晶塔名称！");
-                        Help();
+                        Help(op, names: false);
                         return;
                     }
                     break;
             }
 
-            List<string> map = [
-                "[i:4876]森林",
-                "[i:4875]丛林",
-                "[i:4916]神圣",
-                "[i:4917]洞穴",
-                "[i:4918]海洋",
-                "[i:4919]沙漠",
-                "[i:4920]雪原",
-                "[i:4921]蘑菇",
-                "[i:4951]万能",
-                "[i:5652]地狱",
-                "[i:5653]以太",
-            ];
-
             if (!NearHasPylon(op))
             {
-                op.SendErrorMessage($"附近需要有任意一种晶塔，才能传送到 {map[pyType]}晶塔！");
+                op.SendErrorMessage($"附近需要有任意一种晶塔，才能传送到 {PylonNames[pyType]}晶塔！");
                 return;
             }
 
@@ -113,11 +109,37 @@ namespace Pylon
                 if ((int)info.TypeOfPylon == pyType)
                 {
                     op.Teleport(info.PositionInTiles.X * 16, info.PositionInTiles.Y * 16);
-                    op.SendInfoMessage($"已将你传送至 {map[pyType]}晶塔");
+                    op.SendInfoMessage($"已将你传送至 {PylonNames[pyType]}晶塔");
                     return;
                 }
             }
-            op.SendErrorMessage($"未找到 {map[pyType]}晶塔");
+            op.SendErrorMessage($"未找到 {PylonNames[pyType]}晶塔");
+        }
+
+        /// <summary>
+        /// 帮助，只列出当前玩家有权使用的指令
+        /// </summary>
+        static void Help(TSPlayer op, bool names = true)
+        {
+            List<string> lines = [
+                "/py <晶塔名称>, 将你传送到指定晶塔",
+                "/py find <物品名称/id> [箱子序号], 在所有晶塔附近查找箱子里的物品",
+            ];
+            if (op.HasPermission(PlacePermission))
+                lines.Add("/py place <晶塔名称>, 在脚下放置晶塔");
+            if (op.HasPermission(AdminPermission))
+                lines.Add("/py fix, 清除错误的晶塔信息，并修正位置异常的晶塔");
+            lines.Add("/py help, 显示本帮助");
+
+            if (names)
+            {
+                lines.Add("有效的晶塔名称：");
+                lines.Add("1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11");
+                lines.Add("森林, 雪原, 沙漠, 洞穴, 海洋, 丛林, 神圣, 蘑菇, 地狱, 以太, 万能");
+                lines.Add("f, s, d, c, o, j, h, m, u, a, uni");
+                lines.Add("forest, snow, desert, cavern, ocean, jungle, hallow, mushroom, underworld, aether, universal");
+            }
+            op.SendInfoMessage(string.Join("\n", lines));
         }
 
         static int GetPylonType(string text)
@@ -161,71 +183,86 @@ namespace Pylon
         #region 放置晶塔
         static void Place(CommandArgs args)
         {
-            if (!args.Player.HasPermission("pylon.place"))
+            TSPlayer op = args.Player;
+            if (!op.HasPermission(PlacePermission))
             {
-                args.Player.SendErrorMessage("你没有放置晶塔的权限！");
+                op.SendErrorMessage("你没有放置晶塔的权限！");
                 return;
             }
-            args.Parameters.RemoveAt(0);
-            if (args.Parameters.Count == 0)
+            if (args.Parameters.Count < 2)
             {
-                args.Player.SendErrorMessage("请输入要放置的晶塔名称，例如：/py place 丛林晶塔，名称还可用1~9代替。");
-                return;
-            }
-
-            int pyType = GetPylonType(args.Parameters[0].ToLowerInvariant());
-            if (pyType == -1)
-            {
-                args.Player.SendErrorMessage("无效的晶塔名称！");
+                op.SendErrorMessage("请输入要放置的晶塔名称，例如：/py place 丛林晶塔，名称还可用1~11代替。");
                 return;
             }
 
-            var curX = args.Player.TileX;
-            var curY = args.Player.TileY + 3;
-            var rect = new Rectangle(curX - 1, curY - 4, 3, 4);
-            var emptyCount = 0;
-            var underCount = 0;
+            int style = GetPylonType(args.Parameters[1].ToLowerInvariant().Replace("晶塔", ""));
+            if (style == -1)
+            {
+                op.SendErrorMessage("无效的晶塔名称！");
+                return;
+            }
+
+            // 原版每种晶塔只能存在一个，重复放置会被客户端丢弃并回收方块
+            foreach (TileEntity entity in TileEntity.ByPosition.Values)
+            {
+                if (entity is TETeleportationPylon py && py.TryGetPylonType(out TeleportPylonType existType) && (int)existType == style)
+                {
+                    op.SendErrorMessage($"世界中已存在 {PylonNames[style]}晶塔，无法重复放置！");
+                    return;
+                }
+            }
+
+            // 3x4 区域，底行中心为 (cx, cy)
+            int cx = op.TileX;
+            int cy = op.TileY + 2;
+            if (!WorldGen.InWorld(cx - 1, cy - 3) || !WorldGen.InWorld(cx + 1, cy + 1))
+            {
+                op.SendErrorMessage("你离地图边缘太近了！");
+                return;
+            }
+            Rectangle rect = new(cx - 1, cy - 3, 3, 4);
+            int emptyCount = 0;
+            int underCount = 0;
             for (int rx = rect.Left; rx < rect.Right; rx++)
             {
                 for (int ry = rect.Top; ry < rect.Bottom; ry++)
                 {
-                    ITile tile = Main.tile[rx, ry];
-                    if (!tile.active())
+                    if (!Main.tile[rx, ry].active())
                     {
                         emptyCount++;
                     }
+                }
+                // 脚下需有支撑
+                if (Main.tile[rx, rect.Bottom].active())
+                {
+                    underCount++;
+                }
+            }
+            if (emptyCount != 12 || underCount != 3)
+            {
+                op.SendErrorMessage("你附近3x4的区域有物体，请前往空地！");
+                return;
+            }
 
-                    // 脚下一格
-                    if (ry == rect.Bottom - 1)
-                    {
-                        tile = Main.tile[rx, ry + 1];
-                        if (tile.active())
-                        {
-                            underCount++;
-                        }
-                    }
-                }
-            }
-            if (emptyCount == 12 && underCount == 3)
+            WorldGen.Place3x4(cx, cy, TileID.TeleportationPylon, style);
+            if (!Main.tile[cx, cy].active() || Main.tile[cx, cy].type != TileID.TeleportationPylon)
             {
-                var cx = args.Player.TileX;
-                var cy = args.Player.TileY + 2;
-                WorldGen.Place3x4(cx, cy, 597, pyType);
-                NetMessage.SendTileSquare(-1, cx, cy, 4);
-                var index = TETeleportationPylon.Place(cx, cy);
-                if (index != -1)
-                {
-                    NetMessage.SendData(86, -1, -1, null, index, cx, cy);
-                }
-                else
-                {
-                    args.Player.SendErrorMessage("放置晶塔失败！");
-                }
+                op.SendErrorMessage("放置晶塔失败！");
+                return;
             }
-            else
+
+            // 晶塔实体坐标取 3x4 区域的左上角，传送目标和客户端同步都依赖它
+            int left = cx - 1;
+            int top = cy - 3;
+            NetMessage.SendTileSquare(-1, left, top, 3, 4);
+            int index = TETeleportationPylon.Place(left, top);
+            if (index == -1)
             {
-                args.Player.SendErrorMessage("你附近3x4的区域有物体，请前往空地！");
+                op.SendErrorMessage("放置晶塔失败！");
+                return;
             }
+            NetMessage.SendData(86, -1, -1, null, index);
+            op.SendSuccessMessage($"已在原地放置 {PylonNames[style]}晶塔");
             Netplay.ResetSections();
         }
         #endregion
@@ -233,32 +270,59 @@ namespace Pylon
         #region 修复晶塔错误
         static void FixPylonError(CommandArgs args)
         {
-            int count = 0;
-            foreach (TileEntity value in TileEntity.ByPosition.Values)
+            TSPlayer op = args.Player;
+            if (!op.HasPermission(AdminPermission))
             {
-                if (value is TETeleportationPylon obj)
-                {
-                    var rx = obj.Position.X;
-                    var ry = obj.Position.Y;
-                    ITile tile = Main.tile[rx, ry];
-                    if (!tile.active() || tile.type != 597)
-                    {
-                        TileEntity.ByPosition.Remove(obj.Position);
-                        TileEntity.ByID.Remove(obj.ID);
-                        NetMessage.SendData(86, -1, -1, null, obj.ID, rx, ry);
-                        count++;
-                    }
-                }
+                op.SendErrorMessage("你没有修复晶塔的权限！");
+                return;
             }
-            if (count > 0)
+
+            int removed = 0;
+            int realigned = 0;
+            // 遍历中会增删实体，先拷贝一份
+            List<TETeleportationPylon> pylons = TileEntity.ByPosition.Values.OfType<TETeleportationPylon>().ToList();
+            foreach (TETeleportationPylon py in pylons)
+            {
+                Point16 pos = py.Position;
+                if (!WorldGen.InWorld(pos.X, pos.Y))
+                {
+                    TileEntity.Remove(py);
+                    removed++;
+                    continue;
+                }
+                ITile tile = Main.tile[pos.X, pos.Y];
+                if (!tile.active() || tile.type != TileID.TeleportationPylon)
+                {
+                    TileEntity.Remove(py);
+                    removed++;
+                    continue;
+                }
+
+                // 实体坐标应为 3x4 区域的左上角
+                int left = pos.X - tile.frameX / 18 % 3;
+                int top = pos.Y - tile.frameY / 18 % 4;
+                if (left == pos.X && top == pos.Y)
+                {
+                    continue;
+                }
+                TileEntity.Remove(py);
+                int index = TETeleportationPylon.Place(left, top);
+                if (index != -1)
+                {
+                    NetMessage.SendData(86, -1, -1, null, index);
+                }
+                realigned++;
+            }
+
+            if (removed + realigned > 0)
             {
                 Main.PylonSystem.RequestImmediateUpdate();
             }
-            args.Player.SendSuccessMessage($"已清除{count}个错误的晶塔信息");
+            op.SendSuccessMessage($"已清除{removed}个错误的晶塔信息，修正{realigned}个位置异常的晶塔");
         }
         #endregion
 
-        #region 找箱子
+        #region 找晶塔附近的箱子
         // 物品名
         private static void ShowMe(CommandArgs args)
         {
@@ -335,7 +399,7 @@ namespace Pylon
                     continue;
 
                 int stack = 0;
-                foreach (Item item2 in ch.item.Where(item2 => item2 != null && item2.active && item2.type == item.type))
+                foreach (Item item2 in ch.item.Where(item2 => item2 != null && item2.stack > 0 && item2.type == item.type))
                 {
                     stack += item2.stack;
                 }

@@ -18,7 +18,7 @@
       Also, be sure to release on github with the exact assembly version tag as below
       so that the update manager works correctly (via the Github releases api and mimic)
     -->
-    <Version>1.2</Version>
+    <Version>1.4</Version>
     <AssemblyTitle>Pylon</AssemblyTitle>
     <Company></Company>
     <Product>Pylon</Product>
@@ -43,8 +43,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- <PackageReference Include="TShock" Version="5.2.4" /> -->
-    <Reference
+    <PackageReference Include="TShock" Version="6.2.1" />
+    <!-- <Reference
       Include="OTAPI">
       <HintPath>../../lib/1453/OTAPI.dll</HintPath>
     </Reference>
@@ -59,7 +59,7 @@
     <Reference
       Include="ModFramework">
       <HintPath>../../lib/1453/ModFramework.dll</HintPath>
-    </Reference>
+    </Reference> -->
   </ItemGroup>
 
 </Project>
